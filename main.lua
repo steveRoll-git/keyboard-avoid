@@ -1,3 +1,5 @@
+io.output():setvbuf("no")
+
 local roomy = require "roomy"
 local game  = require "game"
 
