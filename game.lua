@@ -1,6 +1,8 @@
 local love = love
 local lg = love.graphics
 
+local flux = require "flux"
+
 local keyRows = {
   { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=' },
   { 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']' },
@@ -36,21 +38,52 @@ end
 
 local keyFont = lg.newFont(18)
 
+local playerImage = lg.newImage('assets/player.png')
+
+-- converts world key position to centered sprite position
+local function posToSprite(x, y)
+  return x + keySize / 2, y + keySize / 2
+end
+
 local game = {}
 
 function game:enter()
+  self.playerPos = keyPositions['g']
+  self.playerSprite = {
+    angle = 0,
+    squish = 1,
+  }
+  self.playerSprite.x, self.playerSprite.y = posToSprite(self.playerPos.x, self.playerPos.y)
+
+  self.tweens = flux.group()
+end
+
   self.test = keyPositions['g']
 end
 
 function game:keypressed(_, key)
   if keyPositions[key] then
-    self.test = keyPositions[key]
+    local prevX, prevY = self.playerPos.x, self.playerPos.y
+    self.playerPos = keyPositions[key]
+    if prevX ~= self.playerPos.x or prevY ~= self.playerPos.y then
+      local newSpriteX, newSpriteY = posToSprite(self.playerPos.x, self.playerPos.y)
+      self.playerSprite.squish = 2
+      self.playerSprite.angle = math.atan2(newSpriteY - self.playerSprite.y, newSpriteX - self.playerSprite.x)
+      self.tweens:to(self.playerSprite, 0.2, {
+        x = newSpriteX, y = newSpriteY,
+        squish = 1
+      }):ease("cubicout")
+    end
   end
+end
+
+function game:update(dt)
+  self.tweens:update(dt)
 end
 
 function game:draw()
   lg.push()
-  lg.translate(lg.getWidth() / 2 - totalWidth / 2, lg.getHeight() / 2 - totalHeight / 2)
+  lg.translate(math.floor(lg.getWidth() / 2 - totalWidth / 2), math.floor(lg.getHeight() / 2 - totalHeight / 2))
 
   for r, row in ipairs(keyRows) do
     for k = 1, 12 do
@@ -70,8 +103,13 @@ function game:draw()
     end
   end
 
-  lg.setColor(1, 0, 0)
-  lg.circle("fill", self.test.x + keySize / 2, self.test.y + keySize / 2, keySize / 4)
+  lg.setColor(1, 1, 1)
+  lg.push()
+  lg.translate(self.playerSprite.x, self.playerSprite.y)
+  lg.rotate(self.playerSprite.angle)
+  lg.scale(self.playerSprite.squish, 1 / self.playerSprite.squish)
+  lg.draw(playerImage, 0, 0, -self.playerSprite.angle, 1, 1, playerImage:getWidth() / 2, playerImage:getHeight() / 2 )
+  lg.pop()
 
   lg.pop()
 end
